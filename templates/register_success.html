@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block title %}Success{% endblock %}
+{% block content %}
+<h2>✅ Client Registered Successfully!</h2>
+<p>Client ID: {{ client_id }}</p>
+<a href="{{ url_for('client_profile', client_id=client_id) }}" class="btn btn-info">View Profile</a>
+{% endblock %}

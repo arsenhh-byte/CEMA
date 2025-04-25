@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Client Profile</h3>
+<ul class="list-group">
+  <li class="list-group-item"><strong>Name:</strong> {{ client.name }}</li>
+  <li class="list-group-item"><strong>DOB:</strong> {{ client.dob }}</li>
+  <li class="list-group-item"><strong>Gender:</strong> {{ client.gender }}</li>
+  <li class="list-group-item"><strong>Contact:</strong> {{ client.contact }}</li>
+  <li class="list-group-item"><strong>Address:</strong> {{ client.address }}</li>
+  <li class="list-group-item"><strong>Programs:</strong> {{ client.enrolled_programs | join(', ') or 'None' }}</li>
+</ul>
+{% endblock %}

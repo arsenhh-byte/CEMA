@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Edit Client</h3>
+<form method="POST">
+  <div class="row mb-3">
+    <div class="col"><label>First Name</label><input name="first_name" value="{{ first_name }}" class="form-control"></div>
+    <div class="col"><label>Last Name</label><input name="last_name" value="{{ last_name }}" class="form-control"></div>
+  </div>
+  <div class="row mb-3">
+    <div class="col"><label>DOB</label><input name="dob" value="{{ client.dob }}" type="date" class="form-control"></div>
+    <div class="col">
+      <label>Gender</label>
+      <select name="gender" class="form-select">
+        <option {% if client.gender == 'Male' %}selected{% endif %}>Male</option>
+        <option {% if client.gender == 'Female' %}selected{% endif %}>Female</option>
+        <option {% if client.gender == 'Other' %}selected{% endif %}>Other</option>
+      </select>
+    </div>
+  </div>
+  <div class="mb-3"><label>Contact</label><input name="contact" value="{{ client.contact }}" class="form-control"></div>
+  <div class="mb-3"><label>Address</label><input name="address" value="{{ client.address }}" class="form-control"></div>
+  <button class="btn btn-primary">Save Changes</button>
+</form>
+{% endblock %}

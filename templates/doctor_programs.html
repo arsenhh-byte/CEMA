@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3 class="mb-4">Programs Created by {{ session['doctor'] }}</h3>
+
+{% if programs %}
+  <ul class="list-group">
+    {% for p in programs %}
+      <li class="list-group-item">
+        <strong>{{ p.name }}</strong><br>
+        <em>Enrolled Clients:</em>
+        {% if p.clients %}
+        <ul>
+          {% for client in p.clients %}
+            <li>{{ client.name }} ({{ client.contact }})</li>
+          {% endfor %}
+        </ul>
+        {% else %}
+          <div>No clients enrolled yet.</div>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>You haven't created any programs yet.</p>
+{% endif %}
+
+<a href="{{ url_for('logout') }}" class="btn btn-danger mt-4">Logout</a>
+{% endblock %}
