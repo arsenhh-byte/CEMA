@@ -1,0 +1,26 @@
+<div class="row">
+    {% for client in clients %}
+    <div class="col-md-4">
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">{{ client.name }}</h5>
+                <p class="card-text">
+                    <strong>DOB:</strong> {{ client.dob }}<br>
+                    <strong>Contact:</strong> {{ client.contact }}<br>
+                    <strong>Programs:</strong>
+                    <ul>
+                        {% for program in client.programs %}
+                        <li>{{ program.name }}</li>
+                        {% else %}
+                        <li>Not enrolled</li>
+                        {% endfor %}
+                    </ul>
+                </p>
+                <a href="{{ url_for('view_client', client_id=client.id) }}" class="btn btn-primary btn-sm">View Profile</a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <p>No clients found.</p>
+    {% endfor %}
+</div>

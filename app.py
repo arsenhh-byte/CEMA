@@ -88,8 +88,21 @@ def dashboard():
 
 @app.route('/clients')
 def clients_page():
-    clients = Client.query.all()
-    return render_template('clients_page.html', clients=clients)
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+
+    query = request.args.get('search', '')
+    if query:
+        clients = Client.query.filter(Client.name.ilike(f"%{query}%")).all()
+    else:
+        clients = Client.query.all()
+
+    # If it's an AJAX (fetch) request, only return the HTML for the clients list
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render_template('partials/client_list.html', clients=clients)
+    
+    return render_template('clients_page.html', clients=clients, query=query)
+
 
 @app.route('/register-client', methods=['GET', 'POST'])
 def register_client():
@@ -109,7 +122,9 @@ def register_client():
         db.session.commit()
         flash('Client registered successfully.', 'success')
         return redirect(url_for('clients_page'))
+    
     return render_template('register_client.html')
+
 
 @app.route('/client/<int:client_id>')
 def view_client(client_id):
@@ -130,6 +145,20 @@ def edit_client(client_id):
         return redirect(url_for('view_client', client_id=client_id))
     first, *last = client.name.split()
     return render_template('edit_client.html', client=client, first_name=first, last_name=" ".join(last))
+
+# API route for single client profile
+@app.route('/api/clients/<int:client_id>', methods=['GET'])
+def api_client_profile(client_id):
+    client = Client.query.get_or_404(client_id)
+    return jsonify({
+        "id": client.id,
+        "name": client.name,
+        "dob": client.dob,
+        "gender": client.gender,
+        "contact": client.contact,
+        "address": client.address,
+        "programs": [program.name for program in client.programs]
+    })
 
 @app.route('/delete-client/<int:client_id>')
 def delete_client(client_id):

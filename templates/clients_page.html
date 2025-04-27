@@ -1,27 +1,61 @@
 {% extends 'base.html' %}
+
 {% block content %}
-<h2>All Clients</h2>
+<div class="container mt-5">
+    <h2>Clients</h2>
 
-<a href="{{ url_for('register_client') }}" class="btn btn-success mb-3">Register New Client</a>
+    <!-- Live Search Input -->
+    <form id="searchForm" class="d-flex mb-4">
+        <input id="searchInput" class="form-control me-2" type="search" placeholder="Search clients...">
+    </form>
 
-<div class="row">
-  {% for client in clients %}
-    <div class="col-md-4">
-      <div class="card mb-4 shadow-sm">
-        <div class="card-body">
-          <h5 class="card-title">{{ client.name }}</h5>
-          <p class="card-text">
-            <strong>DOB:</strong> {{ client.dob }}<br>
-            <strong>Gender:</strong> {{ client.gender }}<br>
-            <strong>Contact:</strong> {{ client.contact }}
-          </p>
-          <a href="{{ url_for('view_client', client_id=client.id) }}" class="btn btn-primary btn-sm">View Profile</a>
-          <a href="{{ url_for('enroll_client', client_id=client.id) }}" class="btn btn-warning btn-sm">Enroll to Program</a>
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="text-center mb-3" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
         </div>
-      </div>
     </div>
-  {% else %}
-    <p>No clients found.</p>
-  {% endfor %}
+
+    <!-- Clients List -->
+    <div id="clientsContainer">
+        {% include 'partials/client_list.html' %}
+    </div>
 </div>
+
+<script>
+// Get references
+const searchInput = document.getElementById('searchInput');
+const clientsContainer = document.getElementById('clientsContainer');
+const loadingSpinner = document.getElementById('loadingSpinner');
+
+let debounceTimer; // To hold the timer
+
+// Function to fetch and update clients
+function fetchClients(query = '') {
+    loadingSpinner.style.display = 'block'; // Show spinner
+
+    fetch(`/clients?search=${encodeURIComponent(query)}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        clientsContainer.innerHTML = html;
+    })
+    .finally(() => {
+        loadingSpinner.style.display = 'none'; // Always hide spinner
+    });
+}
+
+// Debounced input event
+searchInput.addEventListener('input', function() {
+    const searchValue = searchInput.value.trim();
+
+    clearTimeout(debounceTimer); // Reset timer if typing continues
+    debounceTimer = setTimeout(() => {
+        fetchClients(searchValue); // Only search after 300ms of no typing
+    }, 300);
+});
+</script>
 {% endblock %}
