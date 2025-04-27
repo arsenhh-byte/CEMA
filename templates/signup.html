@@ -2,27 +2,46 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h2 class="mb-4">Doctor Signup</h2>
+    <div class="row justify-content-center">
+        <div class="col-md-6">
 
-    <form method="POST" action="{{ url_for('signup') }}">
-        <div class="mb-3">
-            <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control" id="username" name="username" required>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <h2 class="mb-4 text-center">Doctor Sign Up</h2>
+
+            <form method="POST" action="{{ url_for('signup') }}" class="p-4 border rounded shadow-sm bg-white">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Full Name</label>
+                    <input type="text" name="name" id="name" class="form-control" required placeholder="e.g. Dr. John Doe">
+                </div>
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" name="username" id="username" class="form-control" required placeholder="It can be your name">
+                </div>
+                <div class="mb-4">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" name="password" id="password" class="form-control" required placeholder="Enter password">
+                </div>
+
+                <div class="d-grid mb-3">
+                    <button type="submit" class="btn btn-success">Sign Up</button>
+                </div>
+
+                <div class="text-center">
+                    <small>Already have an account? <a href="{{ url_for('login') }}">Login</a></small>
+                </div>
+            </form>
+
         </div>
-
-        <div class="mb-3">
-            <label for="name" class="form-label">Full Name</label>
-            <input type="text" class="form-control" id="name" name="name" required>
-        </div>
-
-        <div class="mb-3">
-            <label for="password" class="form-label">Password</label>
-            <input type="password" class="form-control" id="password" name="password" required>
-        </div>
-
-        <button type="submit" class="btn btn-primary">Sign Up</button>
-
-        <p class="mt-3">Already have an account? <a href="{{ url_for('login') }}">Login here</a>.</p>
-    </form>
+    </div>
 </div>
 {% endblock %}

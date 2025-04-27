@@ -55,9 +55,16 @@ def signup():
         db.session.add(new_doctor)
         db.session.commit()
 
-        flash('Signup successful. Please log in.', 'success')
-        return redirect(url_for('login'))
+        # Auto-login and redirect to dashboard
+        session['logged_in'] = True
+        session['doctor'] = new_doctor.name
+        session['doctor_id'] = new_doctor.id
+        flash(f"Welcome {new_doctor.name}!", "success")
+        return redirect(url_for('dashboard'))
+        
     return render_template('signup.html')
+
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
