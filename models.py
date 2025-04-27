@@ -26,7 +26,7 @@ class Client(db.Model):
     dob = db.Column(db.String(20), nullable=False)
     gender = db.Column(db.String(20), nullable=False)
     contact = db.Column(db.String(50), nullable=False)
-    address = db.Column(db.String(200), nullable=False)
+    address = db.Column(db.String(255), nullable=False)
 
     # A client can enroll into multiple programs
     programs = db.relationship('ProgramModel', secondary=enrollments, back_populates='clients')

@@ -2,11 +2,15 @@
 
 {% block content %}
 <div class="container mt-5">
+
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Registered Clients</h2>
         <div class="d-flex gap-2">
-            <a href="{{ url_for('download_clients_csv') }}" class="btn btn-outline-success" id="exportCsvBtn">
+            <a id="exportCsvBtn" href="{{ url_for('download_clients_csv') }}" class="btn btn-outline-success">
                 <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
+            </a>
+            <a id="exportPdfBtn" href="{{ url_for('download_clients_pdf') }}" class="btn btn-outline-danger">
+                <i class="bi bi-file-earmark-pdf"></i> Export PDF
             </a>
             <a href="{{ url_for('register_client') }}" class="btn btn-primary">
                 <i class="bi bi-person-plus-fill"></i> Add New Client
@@ -16,17 +20,17 @@
 
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
     {% endwith %}
 
-    <!-- Optional Filters -->
+    <!-- Filters -->
     <form class="row mb-4" id="filterForm">
         <div class="col-md-5">
             <input type="text" class="form-control" id="programFilter" placeholder="Filter by Program Name...">
@@ -34,12 +38,13 @@
         <div class="col-md-5">
             <input type="date" class="form-control" id="afterDateFilter">
         </div>
-        <div class="col-md-2 d-grid">
+        <div class="col-md-2 d-flex gap-2">
             <button type="submit" class="btn btn-outline-secondary">Apply Filters</button>
+            <button type="button" class="btn btn-outline-danger" onclick="clearFilters()">Clear Filters</button>
         </div>
     </form>
 
-    <!-- Search Input -->
+    <!-- Live Search -->
     <div class="input-group mb-4">
         <input type="text" id="searchInput" class="form-control" placeholder="Live search clients by name...">
     </div>
@@ -53,19 +58,17 @@
                     <th>Date of Birth</th>
                     <th>Gender</th>
                     <th>Contact</th>
-                    <th>Address</th>
+                    <th>Email Address</th>
                     <th>Programs</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody id="clientsTable">
                 {% for client in clients %}
-                <tr>
+                <tr data-programs="{{ client.programs | map(attribute='name') | join(', ') | lower }}" data-dob="{{ client.dob }}">
                     <td>{{ client.name }}</td>
                     <td>{{ client.dob }}</td>
-                    <td>
-                        <span class="badge bg-info text-dark">{{ client.gender }}</span>
-                    </td>
+                    <td><span class="badge bg-info text-dark">{{ client.gender }}</span></td>
                     <td>{{ client.contact }}</td>
                     <td>{{ client.address }}</td>
                     <td>
@@ -87,14 +90,17 @@
             </tbody>
         </table>
     </div>
+
 </div>
 
 <!-- Scripts -->
 <script>
     const searchInput = document.getElementById('searchInput');
+    const programFilter = document.getElementById('programFilter');
+    const afterDateFilter = document.getElementById('afterDateFilter');
     const tableRows = document.querySelectorAll('#clientsTable tr');
 
-    // Live Search
+    // Live Search by Client Name
     searchInput.addEventListener('input', function() {
         const query = this.value.toLowerCase();
         tableRows.forEach(row => {
@@ -103,23 +109,36 @@
         });
     });
 
-    // Filter Form (Update Export Link)
+    // Apply Filters
     document.getElementById('filterForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        const programQuery = programFilter.value.toLowerCase();
+        const afterDate = afterDateFilter.value;
 
-        const program = document.getElementById('programFilter').value.trim();
-        const afterDate = document.getElementById('afterDateFilter').value;
+        tableRows.forEach(row => {
+            const programs = row.dataset.programs;
+            const dob = row.dataset.dob;
+            let show = true;
 
-        let exportUrl = '{{ url_for("download_clients_csv") }}?';
+            if (programQuery && !programs.includes(programQuery)) {
+                show = false;
+            }
 
-        if (program) {
-            exportUrl += `program=${encodeURIComponent(program)}&`;
-        }
-        if (afterDate) {
-            exportUrl += `after=${afterDate}&`;
-        }
+            if (afterDate && dob < afterDate) {
+                show = false;
+            }
 
-        document.getElementById('exportCsvBtn').href = exportUrl;
+            row.style.display = show ? '' : 'none';
+        });
     });
+
+    // Clear Filters
+    function clearFilters() {
+        programFilter.value = '';
+        afterDateFilter.value = '';
+        searchInput.value = '';
+        tableRows.forEach(row => row.style.display = '');
+    }
 </script>
+
 {% endblock %}

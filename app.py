@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file, Response
 from flask_sqlalchemy import SQLAlchemy
+from flask_mail import Mail, Message
 from flask_bcrypt import Bcrypt
 from models import db, Client, ProgramModel, Doctor
 from reportlab.lib.pagesizes import letter
@@ -15,6 +16,14 @@ app.secret_key = 'super_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///healthsystem.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Configure Flask-Mail
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'   # Or your SMTP server
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'your_email@gmail.com'  # Your email address
+app.config['MAIL_PASSWORD'] = 'your_email_password'   # Your app-specific password (don't use real password)
+
+mail = Mail(app)
 # Initialize database and Bcrypt
 db.init_app(app)
 bcrypt = Bcrypt(app)
@@ -116,29 +125,88 @@ def clients_page():
     
     return render_template('clients_page.html', clients=clients, query=query)
 
+#email client route
+@app.route('/email-clients-pdf', methods=['POST'])
+def email_clients_pdf():
+    if not session.get('logged_in'):
+        return jsonify({"success": False}), 401
 
+    try:
+        raw_emails = request.form['emails']
+        recipient_list = [email.strip() for email in raw_emails.split(',') if email.strip()]
+
+        if not recipient_list:
+            return jsonify({"success": False}), 400
+
+        buffer = io.BytesIO()
+        pdf = canvas.Canvas(buffer, pagesize=letter)
+        pdf.setFont("Helvetica", 12)
+        pdf.drawString(100, 750, "This is the client registry!")
+        pdf.save()
+        buffer.seek(0)
+
+        msg = Message('Client Registry Report', sender=app.config['MAIL_USERNAME'], recipients=recipient_list)
+        msg.body = 'Attached is the latest client registry report.'
+        msg.attach('client_registry.pdf', 'application/pdf', buffer.read())
+
+        mail.send(msg)
+
+        return jsonify({"success": True})
+    except Exception as e:
+        print('Email error:', e)
+        return jsonify({"success": False}), 500
+
+#create client route
+@app.route('/api/create-client', methods=['POST'])
+def api_create_client():
+    data = request.json
+    new_client = Client(
+        name=f"{data['first_name']} {data['last_name']}",
+        dob=data['dob'],
+        gender=data['gender'],
+        contact=data['contact'],
+        address=data['address']
+    )
+    db.session.add(new_client)
+    db.session.commit()
+    return jsonify({"message": "Client created successfully."}), 201
+
+#Register client route
 @app.route('/register-client', methods=['GET', 'POST'])
 def register_client():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        name = f"{request.form['first_name']} {request.form['last_name']}"
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        full_name = f"{first_name} {last_name}"
+        dob = request.form['dob']
+        gender = request.form['gender']
+        country_code = request.form['country_code']
+        phone = request.form['contact']
+        full_contact = f"{country_code}{phone}"
+        email = request.form['email']  
+
         new_client = Client(
-            name=name,
-            dob=request.form['dob'],
-            gender=request.form['gender'],
-            contact=request.form['contact'],
-            address=request.form['address']
+            name=full_name,
+            dob=dob,
+            gender=gender,
+            contact=full_contact,
+            address=email 
         )
+
         db.session.add(new_client)
         db.session.commit()
+
         flash('Client registered successfully.', 'success')
         return redirect(url_for('clients_page'))
     
     return render_template('register_client.html')
 
 
+
+# Client Profile Route
 @app.route('/client/<int:client_id>')
 def view_client(client_id):
     client = Client.query.get_or_404(client_id)
@@ -194,12 +262,40 @@ def enroll_client(client_id):
     programs = ProgramModel.query.all()
     return render_template('enroll_client.html', client=client, programs=programs)
 
+@app.route('/api/enroll-client', methods=['POST'])
+def api_enroll_client():
+    data = request.json
+    client = Client.query.get_or_404(data['client_id'])
+    programs = ProgramModel.query.filter(ProgramModel.id.in_(data['program_ids'])).all()
+    client.programs = programs
+    db.session.commit()
+    return jsonify({"message": "Client enrolled successfully."}), 200
+
+@app.route('/api/delete-client/<int:id>', methods=['DELETE'])
+def api_delete_client(id):
+    client = Client.query.get_or_404(id)
+    db.session.delete(client)
+    db.session.commit()
+    return jsonify({"message": "Client deleted successfully."}), 200
 # --- PROGRAM ROUTES ---
 
 @app.route('/programs')
 def programs_page():
     programs = ProgramModel.query.all()
-    return render_template('programs_page.html', programs=programs)
+    doctors = Doctor.query.all()
+    return render_template('programs_page.html', programs=programs, doctors=doctors)
+
+#create program route
+@app.route('/api/create-program', methods=['POST'])
+def api_create_program():
+    data = request.json
+    new_program = ProgramModel(
+        name=data['name'],
+        created_by=session['doctor_id']
+    )
+    db.session.add(new_program)
+    db.session.commit()
+    return jsonify({"message": "Program created successfully."}), 201
 
 @app.route('/programs/new', methods=['GET', 'POST'])
 def create_program():

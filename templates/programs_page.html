@@ -2,40 +2,29 @@
 
 {% block content %}
 <div class="container mt-5">
+
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Health Programs</h2>
-        <div>
-            <a href="{{ url_for('create_program') }}" class="btn btn-primary me-2">
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('create_program') }}" class="btn btn-primary">
                 <i class="bi bi-plus-circle"></i> Add New Program
             </a>
             <a href="{{ url_for('export_programs_csv') }}" class="btn btn-success">
-                <i class="bi bi-download"></i> Export CSV
+                <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
             </a>
         </div>
     </div>
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    <!-- Filters Section -->
+    <!-- Search and Filter -->
     <div class="row mb-4">
         <div class="col-md-6 mb-2">
-            <input type="text" id="searchProgramInput" class="form-control" placeholder="Search programs by name...">
+            <input type="text" id="searchInput" class="form-control" placeholder="Search programs by name...">
         </div>
         <div class="col-md-6 mb-2">
             <select id="doctorFilter" class="form-select">
                 <option value="">Filter by Doctor</option>
                 {% for doctor in doctors %}
-                    <option value="{{ doctor.name }}">{{ doctor.name }}</option>
+                <option value="{{ doctor.name }}">{{ doctor.name }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -54,19 +43,17 @@
             </thead>
             <tbody id="programsTable">
                 {% for program in programs %}
-                <tr>
+                <tr data-doctor="{{ program.creator.name if program.creator else 'Unknown' }}">
                     <td>{{ program.name }}</td>
                     <td>
-                        {% if program.creator %}
-                            <span class="badge bg-info text-dark">{{ program.creator.name }}</span>
-                        {% else %}
-                            <span class="badge bg-secondary">Unknown</span>
-                        {% endif %}
+                        <span class="badge bg-info text-dark">{{ program.creator.name if program.creator else 'Unknown' }}</span>
                     </td>
-                    <td><span class="badge bg-success">{{ program.clients|length }} Clients</span></td>
+                    <td>
+                        <span class="badge bg-success">{{ program.clients | length }} Clients</span>
+                    </td>
                     <td>
                         <a href="{{ url_for('edit_program', program_id=program.id) }}" class="btn btn-sm btn-outline-warning">Edit</a>
-                        <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete('{{ url_for('delete_program', program_id=program.id) }}')">Delete</button>
+                        <a href="{{ url_for('delete_program', program_id=program.id) }}" class="btn btn-sm btn-outline-danger">Delete</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -74,81 +61,78 @@
         </table>
     </div>
 
-    <!-- Chart Section -->
-    <div class="card shadow-sm mt-5">
+    <!-- Program Popularity Chart -->
+    <div class="mt-5 card shadow-sm">
         <div class="card-header">
-            <h4 class="mb-0">Program Popularity Chart</h4>
+            <h5 class="mb-0">Program Popularity Chart</h5>
         </div>
         <div class="card-body">
-            <canvas id="programChart" height="100"></canvas>
+            <canvas id="programChart"></canvas>
         </div>
     </div>
+
 </div>
 
-<!-- SweetAlert2 & Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<!-- Scripts -->
 <script>
-    const searchInput = document.getElementById('searchProgramInput');
+    const searchInput = document.getElementById('searchInput');
     const doctorFilter = document.getElementById('doctorFilter');
-    const programRows = document.querySelectorAll('#programsTable tr');
+    const tableRows = document.querySelectorAll('#programsTable tr');
 
-    searchInput.addEventListener('input', filterPrograms);
-    doctorFilter.addEventListener('change', filterPrograms);
-
-    function filterPrograms() {
-        const searchQuery = searchInput.value.toLowerCase();
-        const selectedDoctor = doctorFilter.value.toLowerCase();
-
-        programRows.forEach(row => {
-            const programName = row.children[0].innerText.toLowerCase();
-            const doctorName = row.children[1].innerText.toLowerCase();
-            const matchesSearch = programName.includes(searchQuery);
-            const matchesDoctor = !selectedDoctor || doctorName.includes(selectedDoctor);
-
-            row.style.display = (matchesSearch && matchesDoctor) ? '' : 'none';
+    // Live Search by program name
+    searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        tableRows.forEach(row => {
+            const name = row.children[0].innerText.toLowerCase();
+            row.style.display = name.includes(query) ? '' : 'none';
         });
-    }
-
-    function confirmDelete(url) {
-        Swal.fire({
-            title: 'Confirm Deletion',
-            text: "This action cannot be undone!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Delete',
-        }).then((result) => {
-            if (result.isConfirmed) {
-                window.location.href = url;
-            }
-        });
-    }
-
-    const ctx = document.getElementById('programChart').getContext('2d');
-    const programChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: [{% for program in programs %}'{{ program.name }}',{% endfor %}],
-            datasets: [{
-                label: 'Number of Clients',
-                data: [{% for program in programs %}{{ program.clients|length }},{% endfor %}],
-                backgroundColor: 'rgba(75, 192, 192, 0.7)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1,
-                barThickness: 40
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: { beginAtZero: true, ticks: { stepSize: 1 } }
-            },
-            plugins: { legend: { display: false } }
-        }
     });
+
+    // Filter by Doctor
+    doctorFilter.addEventListener('change', function() {
+        const selectedDoctor = this.value.toLowerCase();
+        tableRows.forEach(row => {
+            const doctorName = row.dataset.doctor.toLowerCase();
+            row.style.display = (!selectedDoctor || doctorName.includes(selectedDoctor)) ? '' : 'none';
+        });
+    });
+
+    // Chart
+    window.onload = function() {
+        fetch('{{ url_for("api_programs") }}')
+        .then(response => response.json())
+        .then(data => {
+            const labels = data.map(p => p.name);
+            const clientsCount = data.map(p => p.enrolled_clients.length);
+
+            const ctx = document.getElementById('programChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Number of Clients',
+                        data: clientsCount,
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    }
+                }
+            });
+        });
+    };
 </script>
 {% endblock %}
