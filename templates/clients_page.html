@@ -2,60 +2,124 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h2>Clients</h2>
-
-    <!-- Live Search Input -->
-    <form id="searchForm" class="d-flex mb-4">
-        <input id="searchInput" class="form-control me-2" type="search" placeholder="Search clients...">
-    </form>
-
-    <!-- Loading Spinner -->
-    <div id="loadingSpinner" class="text-center mb-3" style="display: none;">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Registered Clients</h2>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('download_clients_csv') }}" class="btn btn-outline-success" id="exportCsvBtn">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
+            </a>
+            <a href="{{ url_for('register_client') }}" class="btn btn-primary">
+                <i class="bi bi-person-plus-fill"></i> Add New Client
+            </a>
         </div>
     </div>
 
-    <!-- Clients List -->
-    <div id="clientsContainer">
-        {% include 'partials/client_list.html' %}
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Optional Filters -->
+    <form class="row mb-4" id="filterForm">
+        <div class="col-md-5">
+            <input type="text" class="form-control" id="programFilter" placeholder="Filter by Program Name...">
+        </div>
+        <div class="col-md-5">
+            <input type="date" class="form-control" id="afterDateFilter">
+        </div>
+        <div class="col-md-2 d-grid">
+            <button type="submit" class="btn btn-outline-secondary">Apply Filters</button>
+        </div>
+    </form>
+
+    <!-- Search Input -->
+    <div class="input-group mb-4">
+        <input type="text" id="searchInput" class="form-control" placeholder="Live search clients by name...">
+    </div>
+
+    <!-- Clients Table -->
+    <div class="table-responsive shadow-sm rounded">
+        <table class="table table-striped table-hover">
+            <thead class="table-primary">
+                <tr>
+                    <th>Name</th>
+                    <th>Date of Birth</th>
+                    <th>Gender</th>
+                    <th>Contact</th>
+                    <th>Address</th>
+                    <th>Programs</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="clientsTable">
+                {% for client in clients %}
+                <tr>
+                    <td>{{ client.name }}</td>
+                    <td>{{ client.dob }}</td>
+                    <td>
+                        <span class="badge bg-info text-dark">{{ client.gender }}</span>
+                    </td>
+                    <td>{{ client.contact }}</td>
+                    <td>{{ client.address }}</td>
+                    <td>
+                        {% if client.programs %}
+                            {% for program in client.programs %}
+                                <span class="badge bg-success">{{ program.name }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="badge bg-secondary">None</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('view_client', client_id=client.id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                        <a href="{{ url_for('edit_client', client_id=client.id) }}" class="btn btn-sm btn-outline-warning">Edit</a>
+                        <a href="{{ url_for('delete_client', client_id=client.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this client?');">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
+<!-- Scripts -->
 <script>
-// Get references
-const searchInput = document.getElementById('searchInput');
-const clientsContainer = document.getElementById('clientsContainer');
-const loadingSpinner = document.getElementById('loadingSpinner');
+    const searchInput = document.getElementById('searchInput');
+    const tableRows = document.querySelectorAll('#clientsTable tr');
 
-let debounceTimer; // To hold the timer
-
-// Function to fetch and update clients
-function fetchClients(query = '') {
-    loadingSpinner.style.display = 'block'; // Show spinner
-
-    fetch(`/clients?search=${encodeURIComponent(query)}`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.text())
-    .then(html => {
-        clientsContainer.innerHTML = html;
-    })
-    .finally(() => {
-        loadingSpinner.style.display = 'none'; // Always hide spinner
+    // Live Search
+    searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        tableRows.forEach(row => {
+            const name = row.children[0].innerText.toLowerCase();
+            row.style.display = name.includes(query) ? '' : 'none';
+        });
     });
-}
 
-// Debounced input event
-searchInput.addEventListener('input', function() {
-    const searchValue = searchInput.value.trim();
+    // Filter Form (Update Export Link)
+    document.getElementById('filterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
 
-    clearTimeout(debounceTimer); // Reset timer if typing continues
-    debounceTimer = setTimeout(() => {
-        fetchClients(searchValue); // Only search after 300ms of no typing
-    }, 300);
-});
+        const program = document.getElementById('programFilter').value.trim();
+        const afterDate = document.getElementById('afterDateFilter').value;
+
+        let exportUrl = '{{ url_for("download_clients_csv") }}?';
+
+        if (program) {
+            exportUrl += `program=${encodeURIComponent(program)}&`;
+        }
+        if (afterDate) {
+            exportUrl += `after=${afterDate}&`;
+        }
+
+        document.getElementById('exportCsvBtn').href = exportUrl;
+    });
 </script>
 {% endblock %}

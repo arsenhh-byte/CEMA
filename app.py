@@ -84,6 +84,19 @@ def dashboard():
     clients = Client.query.all()
     return render_template('dashboard.html', programs=programs, clients=clients)
 
+# Dasboard route for auto refresh
+@app.route('/api/dashboard-data')
+def api_dashboard_data():
+    programs = ProgramModel.query.all()
+    clients = Client.query.all()
+    return jsonify({
+        "programs": [
+            {"name": p.name, "clients": [{"name": c.name} for c in p.clients]} for p in programs
+        ],
+        "clients": [{"name": c.name} for c in clients]
+    })
+
+
 # --- CLIENT ROUTES ---
 
 @app.route('/clients')
@@ -282,7 +295,7 @@ def download_clients_pdf():
     if after_date:
         try:
             after_date_obj = datetime.strptime(after_date, "%Y-%m-%d")
-            query = query.filter(Client.dob >= after_date)
+            query = query.filter(Client.dob >= after_date_obj)
         except:
             pass
 
@@ -297,6 +310,116 @@ def download_clients_pdf():
     pdf.save()
     buffer.seek(0)
     return send_file(buffer, as_attachment=True, download_name="client_registry_filtered.pdf", mimetype='application/pdf')
+
+#Export to CSV (Advanced Feature)
+import csv
+@app.route('/download-clients-csv')
+def download_clients_csv():
+    # Optional query parameters
+    program_filter = request.args.get('program')
+    after_date = request.args.get('after')
+
+    query = Client.query
+
+    # Apply filters
+    if program_filter:
+        program = ProgramModel.query.filter_by(name=program_filter).first()
+        if program:
+            query = query.filter(Client.programs.contains(program))
+
+    if after_date:
+        try:
+            after_date_obj = datetime.strptime(after_date, "%Y-%m-%d")
+            query = query.filter(Client.dob >= after_date_obj)
+        except ValueError:
+            pass  # Ignore bad dates
+
+    clients = query.all()
+
+    # Create in-memory CSV
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+
+    # Header
+    writer.writerow(["Name", "DOB", "Gender", "Contact", "Address", "Programs"])
+
+    # Write client rows
+    for client in clients:
+        programs = ", ".join([p.name for p in client.programs])
+        writer.writerow([client.name, client.dob, client.gender, client.contact, client.address, programs])
+
+    buffer.seek(0)
+
+    # Return as downloadable file
+    return send_file(
+        io.BytesIO(buffer.getvalue().encode()),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name="filtered_clients.csv"
+    )
+
+# Export programs to CSV
+@app.route('/export-programs-csv')
+def export_programs_csv():
+    programs = ProgramModel.query.all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Write CSV Header
+    writer.writerow(['Program Name', 'Created By', 'Number of Clients'])
+
+    for program in programs:
+        writer.writerow([
+            program.name,
+            program.creator.name if program.creator else 'Unknown',
+            len(program.clients)
+        ])
+
+    output.seek(0)
+
+    return Response(
+        output,
+        mimetype='text/csv',
+        headers={"Content-Disposition": "attachment; filename=programs_list.csv"}
+    )
+
+
+# Export programs to PDF
+@app.route('/export-programs-pdf')
+def export_programs_pdf():
+    programs = ProgramModel.query.all()
+
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
+    y = height - 40
+
+    pdf.setFont("Helvetica-Bold", 16)
+    pdf.drawString(40, y, "Programs Report")
+    y -= 30
+    pdf.setFont("Helvetica", 11)
+
+    for program in programs:
+        created_by = program.creator.name if program.creator else 'Unknown'
+        enrolled_clients = len(program.clients)
+        pdf.drawString(40, y, f"{program.name} | Created by: {created_by} | {enrolled_clients} Clients")
+        y -= 20
+        if y < 40:
+            pdf.showPage()
+            y = height - 40
+
+    pdf.save()
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True, download_name="programs_report.pdf", mimetype='application/pdf')
+
+# --- Security Configurations ---
+app.config['SESSION_COOKIE_SECURE'] = True      # Cookie sent only via HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True    # Cookie can't be accessed via JavaScript
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'   # Protect against CSRF
+app.config['REMEMBER_COOKIE_SECURE'] = True     # If using 'Remember Me' login (future-proof)
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600 # Sessions expire after 1 hour (in seconds)
+
 
 # --- Run App ---
 if __name__ == '__main__':

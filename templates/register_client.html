@@ -1,26 +1,140 @@
 {% extends 'base.html' %}
-{% block title %}Register New Client{% endblock %}
+
 {% block content %}
-<div class="card p-4">
-  <h3>Register New Client</h3>
-  <form method="POST">
-    <div class="row mb-3">
-      <div class="col"><label>First Name</label><input name="first_name" class="form-control" required></div>
-      <div class="col"><label>Last Name</label><input name="last_name" class="form-control" required></div>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Register New Client</h4>
+                </div>
+
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('register_client') }}">
+                        <div class="row mb-3">
+                            <div class="col">
+                                <label for="first_name" class="form-label">First Name</label>
+                                <input type="text" name="first_name" id="first_name" class="form-control" required placeholder="John">
+                            </div>
+                            <div class="col">
+                                <label for="last_name" class="form-label">Last Name</label>
+                                <input type="text" name="last_name" id="last_name" class="form-control" required placeholder="Doe">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="dob" class="form-label">Date of Birth</label>
+                            <input type="date" name="dob" id="dob" class="form-control" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="gender" class="form-label">Gender</label>
+                            <select name="gender" id="gender" class="form-select" required>
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                          <label for="contact" class="form-label">Contact Number</label>
+                          <div class="input-group">
+                              <select name="country_code" id="country_code" class="form-select" required>
+                                  <option value="">Loading...</option> <!-- Default until fetched -->
+                                  <option value="+254">+254 (Kenya)</option>
+                                  <option value="+1">+1 (USA)</option>
+                                  <option value="+44">+44 (UK)</option>
+                                  <option value="+91">+91 (India)</option>
+                                  <option value="+61">+61 (Australia)</option>
+                                  <option value="+81">+81 (Japan)</option>
+                                  <option value="+49">+49 (Germany)</option>
+                                  <option value="+27">+27 (South Africa)</option>
+                                  <option value="+86">+86 (China)</option>
+                                  <option value="+971">+971 (UAE)</option>
+                              </select>
+                              <input type="text" name="contact" id="contact" class="form-control" required 
+                                     placeholder="e.g., 712345678" 
+                                     pattern="^\d{7,15}$" 
+                                     title="Enter a valid phone number with 7 to 15 digits.">
+                          </div>
+                          <div id="loading-spinner" class="text-muted small mt-1">
+                            Detecting your country code...
+                          </div>
+                          <small class="form-text text-muted">Enter phone without country code. We'll handle it for you!</small>
+                      </div>
+
+                        <div class="mb-3">
+                          <label for="email" class="form-label">Email Address</label>
+                          <input type="email" name="email" id="email" class="form-control" required placeholder="Enter email address...">
+                      </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">Register Client</button>
+                            <a href="{{ url_for('clients_page') }}" class="btn btn-secondary">Back to Clients</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
     </div>
-    <div class="row mb-3">
-      <div class="col"><label>Date of Birth</label><input name="dob" type="date" class="form-control" required></div>
-      <div class="col">
-        <label>Gender</label>
-        <select name="gender" class="form-select" required>
-          <option value="" disabled selected>Select gender</option>
-          <option>Male</option><option>Female</option><option>Other</option>
-        </select>
-      </div>
-    </div>
-    <div class="mb-3"><label>Contact</label><input name="contact" class="form-control" required></div>
-    <div class="mb-3"><label>Address</label><input name="address" class="form-control" required></div>
-    <button class="btn btn-dark w-100">Register Client</button>
-  </form>
 </div>
+
+<!-- Auto-select country code and show loading spinner -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('https://ipapi.co/json/')
+    .then(response => response.json())
+    .then(data => {
+        const countryCode = data.country_calling_code; // like +254
+        const selectElement = document.getElementById('country_code');
+        const loadingSpinner = document.getElementById('loading-spinner');
+
+        // Remove "Loading..." option if found
+        if (selectElement.options[0].value === "") {
+            selectElement.remove(0);
+        }
+
+        let matched = false;
+        for (let option of selectElement.options) {
+            if (option.value === countryCode) {
+                option.selected = true;
+                matched = true;
+                break;
+            }
+        }
+
+        if (loadingSpinner) {
+            loadingSpinner.innerHTML = matched ? "Country code auto-selected!" : "Could not auto-detect country. Please select manually.";
+            setTimeout(() => {
+                loadingSpinner.style.display = 'none';
+            }, 3000);
+        }
+    })
+    .catch(error => {
+        console.error('Country code detection failed:', error);
+        const loadingSpinner = document.getElementById('loading-spinner');
+        if (loadingSpinner) {
+            loadingSpinner.innerHTML = "Could not detect country. Please select manually.";
+            setTimeout(() => {
+                loadingSpinner.style.display = 'none';
+            }, 3000);
+        }
+    });
+});
+</script>
 {% endblock %}
