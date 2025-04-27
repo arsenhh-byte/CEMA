@@ -182,13 +182,15 @@ tests/test_app.py .....                                        [100%]
 ## 🌐 Deployed Version
 
 > You can access the deployed live version here:  
-> https://cema-obl7.onrender.com/login
+> https://cema-obl7.onrender.com
 
 
 ## 👨‍💻 Author
 
 > **Arsen Ogutu**  
 
+## PowerPoint Presentation
+https://docs.google.com/presentation/d/1b5asWs0IvcBCDjYZ2mDMO4zjMDr9KUtFdFfy3oQh_Ls/edit?usp=sharing
 
 ---
 
