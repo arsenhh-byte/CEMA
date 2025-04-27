@@ -185,7 +185,7 @@ tests/test_app.py .....                                        [100%]
 > https://cema-obl7.onrender.com
 
 
-## 👨‍💻 Author
+##  Author
 
 > **Arsen Ogutu**  
 
@@ -200,6 +200,6 @@ This project is released under the [MIT License](LICENSE).
 
 ---
 
-## 🙌 Acknowledgments
+##  Acknowledgments
 
 Thanks to Flask, Bootstrap, ReportLab, and all open-source contributors who made building this solution possible.
